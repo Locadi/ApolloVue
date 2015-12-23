@@ -477,6 +477,128 @@ ApolloV.components.create('av-calendar',{
 });
 ```
 
+### ApolloV.mixins.dataSync
+The data sync mixin allows you to sync data properties between components. 
+
+This mixin should be used when you want to sync data properties between different components or between instances of the same component.
+
+There are two ways to use the data sync mixin, the explicit and the implicit way. 
+
+#### Explicit Data Syncing using Config
+This is the straightforward way in which you can define what to listen to and who is listening. This is all done using a data sync config which you need
+to return by implementing a method called *getDataSyncConfig*.
+ 
+**getDataSyncConfig()**
+ 
+Implement this method and return an array of objects with the following properties:
+ 
+**name** {string} the name of the data property you want to sync with
+
+**trigger** {bool} set this to true if you want ApolloVue to fire an event when this property (with the given name) is changed. This will be done automatically for you. 
+ 
+**listen** (bool} set this to true if you want to be notify when other components are firing the change event for properties with the given name.
+ 
+**callbackName** {function} method which will be called when the an event of data sync has triggered by a different component. The method will get in the first parameter the property name, 
+in the second parameter the new value, and in the 3rd parameter the old value: *onDataSync(name,newValue,oldValue* 
+
+**setDataWhenNoCallback** {bool} set this to true if you don't provide *callbackName* and you just want that the same property will be set with the new value. So if the name was *firstName* and the value was
+"amir", ApolloVue will set the component to have the same proeprty name with this value: *this.firstName = "amir"*. 
+
+### Implicit Data Sync using pattern (and a bit of magic)
+If you want to sync data properties between components, you can also use the more simple approach by defining a sync pattern. This pattern will be tested on all properties of the component and
+the ones who match it will be synced. 
+ 
+When ApolloVue will see a data property that matches the given pattern it will fire and listen to events on data change. You can still define a method called **onDataSync(name,newValue,oldValue)** if you want to control what to do with the data, but if you don't the value will be set to a matching property with the same name.    
+
+You can set the pattern in two ways:
+
+1. create a *dataSyncPattern* property in the component
+1. create a *dataSyncPattern* property in the config for all components. 
+
+The value can be a regular expression object or a regular expression string. 
+
+Lets see an example of both approaches. 
+
+```javascript
+ApolloV.components.create('comp1',{
+  mixins: [ApolloV.mixins.dataSync],
+
+  template: '<h1 @click="toggle">{{name}}</h1>',
+
+
+  data: function(){
+    return {
+      name: "John"
+    }
+  },
+
+  methods: {
+    toggle: function(){
+      this.name = this.name === 'John' ? 'Smith': 'John';
+    },
+
+    getDataSyncConfig: function(){
+      return [
+        {
+          name: 'name',
+          trigger: true, //we want to notify about data changes
+          listen: true, //we want to listen to other components events about the same name
+          setDataWhenNoCallback: true //we dont' provide any callback and we just want to data to be set to this instance this.name
+        },
+        {
+          name: 'dsName',
+          listen: true, //we want to listen to other components events about the same name
+          trigger: false, //we don't have this property so we don't need the trigger
+          callbackName: "onComp2NameChange", //we want to catch the event in this method
+          setDataWhenNoCallback: false //no need to fallback method 
+        }
+      ];
+    },
+
+    onComp2NameChange: function(name,value){
+      this.name = value; //mapping dsName to name. 
+    }
+
+
+  }
+});
+
+
+ApolloV.components.create('comp2',{
+  mixins: [ApolloV.mixins.dataSync],
+
+  template: '<h5 @click="toggle">{{dsName}}</h5>',
+
+
+  data: function(){
+    return {
+      dataSyncPattern: /^ds/, //we define a ds prefix in the data sync pattern so all properties with ds prefix will be sync (dsName) 
+      dsName: "John"  //since we define a prefix of ds and we didn't provide getDataSyncConfig , everything will happen automatically
+    }
+  },
+
+  methods: {
+    toggle: function(){
+      this.dsName = this.dsName === 'John' ? 'Smith': 'John';
+    }
+  }
+});
+```
+
+and the html:
+
+```html
+<comp1></comp1>
+<comp2></comp2>
+<comp1></comp1>
+<comp2></comp2>
+```
+
+When the user will click on the components, it will update the name on the other components accordingly. 
+
+
+ 
+
 ### ApolloV.mixins.events
 Vue event system is independent from the native DOM events and works differently. The events mixin uses the DOM events mechanism and just makes it easier to define, listen and fire events as long as the events are defined in a specific way which the mixin expects. 
 
@@ -490,7 +612,7 @@ In case the item in the array is a string the mixin will expect the following fo
 
 the convention of the events name is as follows: 
 
-*event-* is for *state* events which the component should fire to notify listeners about changes in the componenet. 
+*event-* is for *state* events which the component should fire to notify listeners about changes in the component. 
 
 *command-* is for *command* events which the component is listening to to get some commands from external module, for example a page controller to tell the calendar to display a certain week or month. 
 
@@ -588,7 +710,7 @@ ApolloeVue allow you to set some settings to control some aspets of the library.
 
 You can set config file in two way:
 
-1. set a glbal config variable named **ApolloVCOnfig** which needs to be defined before the ApolloVue. 
+1. set a global config variable named **ApolloVCOnfig** which needs to be defined before the ApolloVue. 
 1. set a config object using the *ApolloV.config.setConfig* method. 
 
 It is recommended to set the config settings before the ApolloVue is initialized. 
@@ -622,14 +744,5 @@ Define some namespace where all your data providers might be in the global names
 ### globalMixins(tagName) {funciton}
 Set a method which should return an array of all the mixins that should be set to any component that is created using ApolloVue. The method gets the tag name of the component to allow you to decide which mixins to put for specific components. It is recommended to set all components with teh template and events mixins. 
 
-
-
-
-
-
-
-
-
-
-
-
+### dataSyncPattern {RegExp|String}
+Set a regular expression object or a string to tell ApolloVue the pattern of the property name which should be synced. for example set it to /^dataSync/ to sync all properties which starts with "dataSync" for this.dataSyncName will be synced but this.syncData will not.
