@@ -1,0 +1,9 @@
+node_modules
+dist
+.tmp
+bower_components
+.idea
+.sass-cache
+.DS_Store
+app/*.html
+app/*.ejs
