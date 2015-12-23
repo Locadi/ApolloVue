@@ -335,6 +335,92 @@
   };
 
   /**
+   * DataSync mixin is used to sync data properties in different component instances.
+   *
+   */
+  var DataSyncMixin = {
+    created: function(){
+
+      var dataArray = [];
+      if( typeof this.getDataSyncConfig === 'function' ){
+        var config = this.getDataSyncConfig();
+        if( !config ){
+          _private.warn('getDataSyncConfig return null data array');
+          return;
+        }
+        dataArray = config;
+      }
+      else{
+        //we need some pattern to know if a property should be sync
+        var pattern;
+        if( this.dataSyncPattern ){
+          pattern = this.dataSyncPattern
+        }
+        else if( _private.config.dataSyncPattern ){
+          pattern = _private.config.dataSyncPattern;
+        }
+
+        if( !pattern ){
+          _private.warn('no pattern was found for the data sync. either remove the data sync mixin from the component or provide dataSyncPattern property in the component or in the config.');
+          return;
+        }
+
+        if( !(pattern instanceof RegExp) ){
+          try{
+            pattern = new RegExp(pattern);
+          }
+          catch(err){
+            _private.warn('pattern is not a valid regular expression string',err);
+            return;
+          }
+        }
+
+
+        //looking for the pattern
+        for( var propertyName in this ){
+          if( pattern.test(propertyName) && typeof this[propertyName] !== 'function' && propertyName !== 'dataSyncPattern' ){
+            dataArray.push({
+              name: propertyName,
+              trigger: true,
+              listen: true,
+              callbackName: "onDataSync",
+              setDataWhenNoCallback: true
+            });
+          }
+        }
+      }
+
+      var obj = this;
+      for( var i=0; i<dataArray.length; i++ ) {
+        (function () {
+          var _propertyName = dataArray[i].name;
+          var callbackName = dataArray[i].callbackName;
+          var setDataWhenNoCallback = dataArray[i].setDataWhenNoCallback;
+
+          if (dataArray[i].listen) {
+            //we want to register for this change on different components.
+            _private.registerForPropertyChange(obj, _propertyName, function (name, newValue, oldValue) {
+              if (typeof this[callbackName] === 'function') {
+                this[callbackName](name, newValue, oldValue);
+              }
+              else if (setDataWhenNoCallback) {
+                this[name] = newValue;
+              }
+            }.bind(this));
+          }
+
+          if (dataArray[i].trigger) {
+            //we want to tell other components that it was changed.
+            this.$watch(_propertyName, function (newValue, oldValue) {
+              _private.reportPropertyChanged(obj, _propertyName, newValue, oldValue);
+            }.bind(this));
+          }
+        }.bind(this))();
+      }
+    }
+  };
+
+  /**
    * all privates data and functions
    * @private
    */
@@ -364,6 +450,10 @@
      * the data providers. for example "company.data.providers" will make the ApolloVie to check in window.company.data.providers
      * if the data provider is defined there. this could also be the window object to set the data providers in the global scope (although is not recommended)
      *
+     * @attr dataSyncPattern {RegExp|String} set a regular expression object or a string to tell ApolloVue the pattern of the property name
+     * which should be synced. for example set it to /^dataSync/ to sync all properties which starts with "dataSync" for this.dataSyncName will be synced
+     * but this.syncData will not.
+     *
      * @attr globalMixins {function) when a new component is created using ApolloV.components.create the method
      * will inject each component with some global mixins which will be returned by this method. Use this method
      * to control some default mixins for all project or set of components. the method will get as a parameter the
@@ -372,6 +462,19 @@
      * @attr debug {bool} if this is true additional debug logs will be sent to the console.log
      */
     config : null,
+
+    /**
+     * we want to allow components to register and trigger data change events between components.
+     * this object is a key-value map where the key is the data property name and the value is an array of
+     * all the vue components which listning to the event.
+     */
+    watchers: {},
+
+    /**
+     * since we don't want to have a case where the same event is firing with the same data in a short period of time
+     * we keep for each data property name the last time it was fired and the last value.
+     */
+    lastWatchData:{},
 
     /**
      * data providers are object which are responsible to load data for components.
@@ -397,6 +500,80 @@
       if( _private.config.dataProviders ){
         _private.dataProviders = _private.config.dataProviders;
       }
+    },
+
+    /**
+     * allow for a vue object to register for a property change
+     * @param vueObj
+     * @param propertyName
+     * @param cb
+     */
+    registerForPropertyChange: function(vueObj,propertyName,cb){
+      if( !_private.watchers[propertyName] ){
+        _private.watchers[propertyName] = [];
+        _private.lastWatchData[propertyName] = {time:0,value:null};
+      }
+      _private.watchers[propertyName].push({vue:vueObj,propertyName:propertyName,watchFn:cb});
+    },
+
+    /**
+     * Firing an event to all the registered vue components.
+     * @param vueObj
+     * @param propertyName
+     * @param newValue
+     * @param oldValue
+     */
+    reportPropertyChanged: function(vueObj,propertyName,newValue,oldValue){
+      if( !_private.watchers[propertyName] ){
+        //nobody registered for this event.
+        return;
+      }
+
+      var now = (new Date()).getTime();
+      if( !_private.lastWatchData[propertyName] ){
+        _private.lastWatchData[propertyName] = {time:0,value:null};
+      }
+
+      //making sure we don't fire the same event in a small period of time with the same value
+      //this will prevent an endless loop of events.
+      if( _private.isValueEquals(newValue,_private.lastWatchData[propertyName].value,true) &&
+          now - _private.lastWatchData[propertyName].time < 500 ){
+        _private.debug('ignoring the data sync event since it is the same data in short period of time','DataSyncMixin');
+        return;
+      }
+
+      for( var i=0; i<_private.watchers[propertyName].length; i++ ){
+        if( vueObj !== _private.watchers[propertyName].vue ){
+          _private.watchers[propertyName][i].watchFn(propertyName,newValue,oldValue);
+        }
+      }
+      //saving the last value with current time.
+      _private.lastWatchData[propertyName] = {time:now,value:newValue};
+    },
+
+    /**
+     * this method checks if 2 variable are the equal.
+     *
+     * @param value1
+     * @param value2
+     * @param jsonCompare
+     * @returns {boolean}
+     */
+    isValueEquals: function(value1,value2,jsonCompare){
+      switch( typeof value1 ){
+        case 'string':
+        case 'number':
+        case 'boolean':
+          return value1 === value2
+      }
+      if( !value1 ) return value1 === value2;
+
+      if( value1 === value2 ) return true;
+
+      if( !jsonCompare ){
+        return false;
+      }
+      return JSON.stringify(value1) === JSON.stringify(value2);
     },
 
     getComponentTagName: function(vue){
@@ -451,8 +628,6 @@
 
     http: function(url){
       return new Promise( function(resolve,reject){
-       // var templateUrl = _private.getTemplateUrl(templateId);
-
         if( _private.config.http ){
           _private.config.http(url).then( function(data){
             resolve(data);
@@ -466,6 +641,9 @@
               resolve(data);
             }.bind(this)
           });
+        }
+        else{
+          _private.warn("can't make HTTP request. Either use jquery or set in the config the http property.")
         }
 
       }.bind(this));
@@ -596,7 +774,8 @@
       template: TemplateMixin,
       dynamicTemplate: DynamicTemplateMixin,
       dataProvider: DataProviderMixin,
-      events: EventsMixin
+      events: EventsMixin,
+      dataSync: DataSyncMixin
     },
 
     templates: {
