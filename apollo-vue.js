@@ -363,7 +363,7 @@
         if( !pattern ){
           _private.warn('no pattern was found for the data sync. either remove the data sync mixin from the component or provide dataSyncPattern property in the component or in the config.');
           return;
-        } 
+        }
 
         if( !(pattern instanceof RegExp) ){
           try{

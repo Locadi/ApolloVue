@@ -743,3 +743,6 @@ Define some namespace where all your data providers might be in the global names
 
 ### globalMixins(tagName) {funciton}
 Set a method which should return an array of all the mixins that should be set to any component that is created using ApolloVue. The method gets the tag name of the component to allow you to decide which mixins to put for specific components. It is recommended to set all components with teh template and events mixins. 
+
+### dataSyncPattern {RegExp|String}
+Set a regular expression object or a string to tell ApolloVue the pattern of the property name which should be synced. for example set it to /^dataSync/ to sync all properties which starts with "dataSync" for this.dataSyncName will be synced but this.syncData will not.
