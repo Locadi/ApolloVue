@@ -1,6 +1,6 @@
 node_modules
-dist
 .tmp
+dist/mixins.js
 bower_components
 .idea
 .sass-cache
