@@ -11,7 +11,7 @@ Here are the requirements which led to the development of this mini framework:
 * Dynamic Templating
 * Dynamic Instantiating
 * Asynchronous Initialization
-* Data Decoupeling
+* Data Decoupling
 * DOM Event Communication
 
 ### Tag Components
