@@ -11,7 +11,7 @@ Here are the requirements which led to the development of this mini framework:
 * Dynamic Templating
 * Dynamic Instantiating
 * Asynchronous Initialization
-* Data Decoupeling
+* Data Decoupling
 * DOM Event Communication
 
 ### Tag Components
@@ -47,7 +47,7 @@ The structure of components should allow us to inject a data provider object. On
 The Vue event system is independent from the native DOM events and works differently. However, we want components to communicate using the more beneficial DOM events, which would also allow them to communicate with non-Vue code. 
 
 ## Dependencies 
-ApolloVue dependents on the following:
+ApolloVue depends on the following:
 * Vue (>=1.0)
 * jQuery (>=1.7)
 * [ES6 Promise](https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Promise) you can use the [ES6 promise polyfill](https://github.com/lahmatiy/es6-promise-polyfill) to support older browsers. 
@@ -71,7 +71,7 @@ ApolloVue can be configured using a config file. In case you want to use a dedic
 Just make sure the config file is setting a global variable named **ApolloVConfig**. Learn more about the config option in the [config](#config) section of this documentation. 
 
 ## API
-ApolloVue are a few methods and mixins which are supposed to structure and improve the creation and initialization of Vue components.
+ApolloVue is a few methods and mixins which are supposed to structure and improve the creation and initialization of Vue components.
  
 ApolloVue is accessible via the **ApolloV** namespace to the global scope.  
 
@@ -418,7 +418,7 @@ Data provider mixin will add the following to the component:
 
 **dataLoaded** {bool} this is set to true by the mixin after the data was loaded. It is false when the component is created and will be set to true only once. This is useful if you use *autoLoad*.
 
-**autoLoad** in case you want the component to load the data when it is initialized, all you need to do is to set *autoLoad* to true and the mixin will load it in the *beforeCompile* hook. In that case, you must also implement the method *afterDataLoaded* which will get the loaded data and a boolean indicating whether or not the data was loaded synchroneously.
+**autoLoad** in case you want the component to load the data when it is initialized, all you need to do is to set *autoLoad* to true and the mixin will load it in the *beforeCompile* hook. In that case, you must also implement the method *afterDataLoaded* which will get the loaded data and a boolean indicating whether or not the data was loaded synchronously.
 
 **loadData(config)** 
 
