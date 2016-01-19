@@ -1,0 +1,19 @@
+{
+  "name": "ApolloVue",
+  "version": "1.0.1",
+  "main": "dist/apollo-vue.js",
+  "ignore": [
+    "src",
+    "spec",
+    ".bowerrc",
+    ".gitignore",
+    "bower.json",
+    "gulpfile.js",
+    "package.json"
+  ],
+  "dependencies": {
+
+  },
+  "devDependencies": {
+  }
+}
