@@ -1,5 +1,10 @@
 # ApolloVue Documentation
 
+## Intall
+```
+bower install apollo-vue
+```
+
 ## What is ApolloVue
 ApolloVue is a mini utility framework on top of [Vue.JS](http://vuejs.org/) which was designed to enforce some standards and provide help in developing asynchronous components in Vue. 
 
