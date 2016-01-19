@@ -1,5 +1,5 @@
 /**
- * ApolloVue version 1.0.1
+ * ApolloVue version 1.0.2
  */
 (function(){
 /** MIXIN-INJECT:START **/
